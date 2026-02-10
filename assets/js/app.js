@@ -6,9 +6,29 @@ let editingId = null;
 
 // ==================== INICIALIZACIÓN ====================
 document.addEventListener('DOMContentLoaded', () => {
-    cargarIncidencias();
-    configurarEventos();
-    renderizarIncidencias();
+    // Intentar cargar datos del archivo JSON
+    fetch('incidencias_combined.json')
+        .then(response => {
+            if (!response.ok) throw new Error('JSON no encontrado');
+            return response.json();
+        })
+        .then(data => {
+            // Si el JSON es un array, usarlo directamente
+            if (Array.isArray(data)) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                console.log('✅ Datos cargados desde incidencias_combined.json');
+            }
+            cargarIncidencias();
+            configurarEventos();
+            renderizarIncidencias();
+        })
+        .catch(error => {
+            // Si no hay JSON, cargar del localStorage
+            console.log('ℹ️ Usando datos del localStorage');
+            cargarIncidencias();
+            configurarEventos();
+            renderizarIncidencias();
+        });
 });
 
 // ==================== CONFIGURAR EVENTOS ====================
