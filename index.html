@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incidencias TODO - Gestor de Incidencias</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📋 Incidencias TODO</h1>
+            <p class="subtitle">Gestor de Incidencias y Tareas</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Barra de búsqueda y filtros -->
+            <section class="search-section">
+                <div class="search-bar">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="🔍 Buscar incidencias..."
+                        class="search-input"
+                    >
+                </div>
+
+                <div class="filters">
+                    <select id="filterStatus" class="filter-select">
+                        <option value="">Todos los estados</option>
+                        <option value="pendiente">🔴 Pendiente</option>
+                        <option value="en-progreso">🟡 En Progreso</option>
+                        <option value="completada">🟢 Completada</option>
+                    </select>
+
+                    <select id="filterPriority" class="filter-select">
+                        <option value="">Todas las prioridades</option>
+                        <option value="baja">Baja</option>
+                        <option value="media">Media</option>
+                        <option value="alta">Alta</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Contenedor flex para formulario y lista -->
+            <div class="content-wrapper">
+                <!-- Formulario -->
+                <section class="form-section">
+                    <h2>Crear Nueva Incidencia</h2>
+                    <form id="incidenciaForm" class="form">
+                        <div class="form-group">
+                            <label for="titulo">Título *</label>
+                            <input 
+                                type="text" 
+                                id="titulo" 
+                                class="form-control"
+                                placeholder="Describe la incidencia"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="descripcion">Descripción</label>
+                            <textarea 
+                                id="descripcion" 
+                                class="form-control"
+                                rows="3"
+                                placeholder="Detalles de la incidencia..."
+                            ></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tipo">Tipo de Ingeniería</label>
+                                <select id="tipo" class="form-control">
+                                    <option value="">Seleccionar tipo</option>
+                                    <option value="software">Software</option>
+                                    <option value="hardware">Hardware</option>
+                                    <option value="red">Red</option>
+                                    <option value="base-datos">Base de Datos</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="asignada">Asignada a</label>
+                                <input 
+                                    type="text" 
+                                    id="asignada" 
+                                    class="form-control"
+                                    placeholder="Nombre de persona"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="estado">Estado *</label>
+                                <select id="estado" class="form-control" required>
+                                    <option value="pendiente">🔴 Pendiente</option>
+                                    <option value="en-progreso">🟡 En Progreso</option>
+                                    <option value="completada">🟢 Completada</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prioridad">Prioridad</label>
+                                <select id="prioridad" class="form-control">
+                                    <option value="baja">Baja</option>
+                                    <option value="media" selected>Media</option>
+                                    <option value="alta">Alta</option>
+                                    <option value="urgente">Urgente</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="foto">Adjuntar Foto (Base64)</label>
+                            <input 
+                                type="file" 
+                                id="foto" 
+                                class="form-control"
+                                accept="image/*"
+                            >
+                            <small>Las imágenes se convertirán a Base64</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            ➕ Crear Incidencia
+                        </button>
+                    </form>
+                </section>
+
+                <!-- Lista de Incidencias -->
+                <section class="list-section">
+                    <div class="list-header">
+                        <h2>Lista de Incidencias</h2>
+                        <span id="totalIncidencias" class="total-badge">0</span>
+                    </div>
+
+                    <div id="incidenciasList" class="incidencias-list">
+                        <p class="empty-message">No hay incidencias. ¡Crea una nueva!</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Modal de Edición -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Editar Incidencia</h2>
+                <form id="editForm" class="form">
+                    <input type="hidden" id="editId">
+                    
+                    <div class="form-group">
+                        <label for="editTitulo">Título</label>
+                        <input type="text" id="editTitulo" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editDescripcion">Descripción</label>
+                        <textarea id="editDescripcion" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editTipo">Tipo</label>
+                            <select id="editTipo" class="form-control">
+                                <option value="">Seleccionar tipo</option>
+                                <option value="software">Software</option>
+                                <option value="hardware">Hardware</option>
+                                <option value="red">Red</option>
+                                <option value="base-datos">Base de Datos</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editAsignada">Asignada a</label>
+                            <input type="text" id="editAsignada" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editEstado">Estado</label>
+                            <select id="editEstado" class="form-control" required>
+                                <option value="pendiente">🔴 Pendiente</option>
+                                <option value="en-progreso">🟡 En Progreso</option>
+                                <option value="completada">🟢 Completada</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editPrioridad">Prioridad</label>
+                            <select id="editPrioridad" class="form-control">
+                                <option value="baja">Baja</option>
+                                <option value="media" selected>Media</option>
+                                <option value="alta">Alta</option>
+                                <option value="urgente">Urgente</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-buttons">
+                        <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
+                        <button type="button" class="btn btn-secondary" id="closeModal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal de Visualización -->
+        <div id="viewModal" class="modal">
+            <div class="modal-content-view">
+                <span class="close">&times;</span>
+                <div id="viewContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
