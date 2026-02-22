@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Incidencias TODO - Gestor de Incidencias</title>
+    <title> Gestor de Incidencias</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="assets/css/styles.css">
 </head>
@@ -11,8 +11,8 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>📋 Incidencias TODO</h1>
-            <p class="subtitle">Gestor de Incidencias y Tareas</p>
+            <h1>📋 Incidencias TOMA DE ESTADO</h1>
+            <p class="subtitle">Gestor de Incidencias </p>
         </header>
 
         <!-- Main Content -->
@@ -78,24 +78,25 @@
 
                         <div class="form-group">
                             <label for="descripcion">Descripción</label>
-                            <textarea 
-                                id="descripcion" 
-                                class="form-control"
-                                rows="3"
-                                placeholder="Detalles de la incidencia..."
-                            ></textarea>
+                            <select id="descripcion" class="form-control">
+ 				<option value="">Detalles de la incidencia</option>
+                                <option value="caja_corriente">Caja con corriente AN003</option>
+                                    <option value="caja_profunda">Caja profunda AN005</option>
+				<option value="conexion_irregular">Conexion Irregular con medidor AN007 </option>
+				<option value="Actividad_predio_errada">Actividad del predio errada AN008 </option>
+				<option value="Conexion_cerrada">Conexion cerrada AN009</option>
+				
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="tipo">Tipo de Ingeniería</label>
+                                <label for="tipo">Tipo</label>
                                 <select id="tipo" class="form-control">
                                     <option value="">Seleccionar tipo</option>
-                                    <option value="software">Software</option>
-                                    <option value="hardware">Hardware</option>
-                                    <option value="red">Red</option>
-                                    <option value="base-datos">Base de Datos</option>
-                                    <option value="otro">Otro</option>
+                                    <option value="sin_lectura">Sin Lectura</option>
+                                    <option value="con_lectura">Con Lectura</option>
+                                    
+                                    >
                                 </select>
                             </div>
 
