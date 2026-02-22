@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Incidencias TODO - Gestor de Incidencias</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
@@ -16,6 +17,19 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Sección de Estadísticas -->
+            <section class="stats-section">
+                <h2>Dashboard de Estadísticas</h2>
+                <div class="stats-grid">
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="priorityChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
             <!-- Barra de búsqueda y filtros -->
             <section class="search-section">
                 <div class="search-bar">
@@ -138,7 +152,10 @@
                 <section class="list-section">
                     <div class="list-header">
                         <h2>Lista de Incidencias</h2>
-                        <span id="totalIncidencias" class="total-badge">0</span>
+                        <div class="header-actions">
+                            <button id="exportPdfBtn" class="btn btn-secondary btn-small">📄 Exportar a PDF</button>
+                            <span id="totalIncidencias" class="total-badge">0</span>
+                        </div>
                     </div>
 
                     <div id="incidenciasList" class="incidencias-list">
@@ -223,6 +240,9 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <script src="assets/js/app.js"></script>
 </body>
 </html>

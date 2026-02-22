@@ -3,6 +3,8 @@ const STORAGE_KEY = 'incidencias_data';
 let incidenciasActuales = [];
 let incidenciasFiltered = [];
 let editingId = null;
+let statusChart = null;
+let priorityChart = null;
 
 // ==================== INICIALIZACIÓN ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -47,6 +49,12 @@ function configurarEventos() {
     filterStatus.addEventListener('change', aplicarFiltros);
     filterPriority.addEventListener('change', aplicarFiltros);
 
+    // Botón Exportar PDF
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', exportarPDF);
+    }
+
     // Modales
     const editModal = document.getElementById('editModal');
     const viewModal = document.getElementById('viewModal');
@@ -86,7 +94,7 @@ function handleCrearIncidencia(e) {
     const fotoInput = document.getElementById('foto');
 
     if (!titulo) {
-        alert('El título es obligatorio');
+        mostrarNotificacion('El título es obligatorio', 'danger');
         return;
     }
 
@@ -209,9 +217,14 @@ function renderizarIncidencias() {
     // Mostrar cantidad total
     const cantidadTotal = incidenciasAMostrar.length;
     totalBadge.textContent = cantidadTotal;
+    
+    renderizarEstadisticas();
 
-    if (cantidadTotal === 0) {
+    if (cantidadTotal === 0 && incidenciasActuales.length === 0) {
         lista.innerHTML = '<p class="empty-message">No hay incidencias. ¡Crea una nueva!</p>';
+        return;
+    } else if (cantidadTotal === 0 && incidenciasActuales.length > 0) {
+        lista.innerHTML = '<p class="empty-message">No se encontraron incidencias con los filtros aplicados.</p>';
         return;
     }
 
@@ -258,7 +271,7 @@ function crearTarjetaIncidencia(incidencia) {
     const emojiEstado = emojisEstado[incidencia.estado] || '•';
 
     return `
-        <div class="incidencia-card">
+        <div class="incidencia-card prioridad-${incidencia.prioridad}" onclick="abrirModalVista(${incidencia.id})">
             <div class="incidencia-header">
                 <div class="incidencia-title">${escapeHtml(incidencia.titulo)}</div>
                 <span class="incidencia-status status-${incidencia.estado}">
@@ -274,9 +287,6 @@ function crearTarjetaIncidencia(incidencia) {
                 ${incidencia.tipo ? `<div class="meta-item"><span class="meta-label">📁 Tipo:</span> ${escapeHtml(incidencia.tipo)}</div>` : ''}
                 ${incidencia.asignada ? `<div class="meta-item"><span class="meta-label">👤 Asignada:</span> ${escapeHtml(incidencia.asignada)}</div>` : ''}
                 <div class="meta-item"><span class="meta-label">📅 Fecha:</span> ${fechaCreacion}</div>
-                <span class="prioridad-badge prioridad-${incidencia.prioridad}">
-                    ${incidencia.prioridad.charAt(0).toUpperCase() + incidencia.prioridad.slice(1)}
-                </span>
             </div>
 
             <div class="incidencia-actions">
@@ -392,7 +402,6 @@ function manejarFoto(e) {
     const archivo = e.target.files[0];
     if (!archivo) return;
 
-    // Validar tipo MIME
     const tiposValidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!tiposValidos.includes(archivo.type)) {
         alert('Solo se permiten imágenes (JPEG, PNG, GIF, WebP)');
@@ -400,7 +409,6 @@ function manejarFoto(e) {
         return;
     }
 
-    // Validar tamaño (máximo 5MB)
     const tamanioMax = 5 * 1024 * 1024;
     if (archivo.size > tamanioMax) {
         alert('La imagen no debe superar 5MB');
@@ -424,8 +432,13 @@ function escapeHtml(texto) {
 }
 
 function mostrarNotificacion(mensaje, tipo = 'info') {
-    // Crear elemento de notificación
+    const existingNotif = document.querySelector('.notification');
+    if (existingNotif) {
+        existingNotif.remove();
+    }
+
     const notif = document.createElement('div');
+    notif.classList.add('notification');
     notif.style.cssText = `
         position: fixed;
         top: 20px;
@@ -436,7 +449,7 @@ function mostrarNotificacion(mensaje, tipo = 'info') {
         border-radius: 8px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
         z-index: 2000;
-        animation: slideInRight 0.3s ease;
+        animation: slideInRight 0.3s ease forwards; /* Use forwards to keep the end state */
         font-weight: 500;
     `;
     notif.textContent = mensaje;
@@ -444,9 +457,120 @@ function mostrarNotificacion(mensaje, tipo = 'info') {
 
     // Remover después de 3 segundos
     setTimeout(() => {
-        notif.style.animation = 'slideOutRight 0.3s ease';
+        notif.style.animation = 'slideOutRight 0.3s ease forwards';
         setTimeout(() => notif.remove(), 300);
     }, 3000);
+}
+
+// ==================== ESTADÍSTICAS Y GRÁFICOS ====================
+
+function obtenerEstadisticas() {
+    const total = incidenciasActuales.length;
+    const stats = {
+        total: total,
+        estados: {
+            pendiente: 0,
+            'en-progreso': 0,
+            completada: 0,
+        },
+        prioridades: {
+            baja: 0,
+            media: 0,
+            alta: 0,
+            urgente: 0,
+        },
+    };
+
+    for (const inc of incidenciasActuales) {
+        if (stats.estados[inc.estado] !== undefined) {
+            stats.estados[inc.estado]++;
+        }
+        if (stats.prioridades[inc.prioridad] !== undefined) {
+            stats.prioridades[inc.prioridad]++;
+        }
+    }
+    return stats;
+}
+
+function renderizarEstadisticas() {
+    const stats = obtenerEstadisticas();
+    
+    // Chart 1: Estado de Incidencias
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    if (statusChart) {
+        statusChart.destroy();
+    }
+    statusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pendiente', 'En Progreso', 'Completada'],
+            datasets: [{
+                label: 'Estado de Incidencias',
+                data: [stats.estados.pendiente, stats.estados['en-progreso'], stats.estados.completada],
+                backgroundColor: [
+                    '#e74c3c',
+                    '#f39c12',
+                    '#27ae60'
+                ],
+                borderColor: '#ffffff',
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Distribución por Estado'
+                }
+            }
+        }
+    });
+
+    // Chart 2: Prioridad de Incidencias
+    const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+    if (priorityChart) {
+        priorityChart.destroy();
+    }
+    priorityChart = new Chart(priorityCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Baja', 'Media', 'Alta', 'Urgente'],
+            datasets: [{
+                label: 'Nº de Incidencias por Prioridad',
+                data: [stats.prioridades.baja, stats.prioridades.media, stats.prioridades.alta, stats.prioridades.urgente],
+                backgroundColor: [
+                    '#2ecc71',
+                    '#f1c40f',
+                    '#e67e22',
+                    '#c0392b'
+                ],
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Distribución por Prioridad'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
 }
 
 // ==================== EXPORTAR E IMPORTAR DATOS ====================
@@ -462,6 +586,58 @@ function exportarDatos() {
     a.click();
     URL.revokeObjectURL(url);
     mostrarNotificacion('Datos exportados exitosamente', 'success');
+}
+
+// Exportar datos como PDF
+function exportarPDF() {
+    // Check if jsPDF and autoTable are loaded
+    if (typeof window.jsPDF === 'undefined' || typeof window.autoTable === 'undefined') {
+        mostrarNotificacion('Las librerías para exportar PDF no están cargadas.', 'danger');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text('Reporte de Incidencias', 14, 22);
+
+    const incidenciasParaTabla = (incidenciasFiltered.length > 0 ? incidenciasFiltered : incidenciasActuales).map(inc => [
+        inc.id,
+        inc.titulo,
+        inc.estado.charAt(0).toUpperCase() + inc.estado.slice(1),
+        inc.prioridad.charAt(0).toUpperCase() + inc.prioridad.slice(1),
+        inc.asignada,
+        new Date(inc.fechaActualizacion).toLocaleDateString('es-ES')
+    ]);
+
+    doc.autoTable({
+        startY: 30,
+        head: [['ID', 'Título', 'Estado', 'Prioridad', 'Asignada a', 'Última Actualización']],
+        body: incidenciasParaTabla,
+        theme: 'striped',
+        headStyles: { fillColor: [44, 62, 80] }, // secondary-color
+        styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+        columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 20 },
+            4: { cellWidth: 30 },
+            5: { cellWidth: 25 }
+        }
+    });
+
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
+    }
+
+    doc.save(`reporte_incidencias_${new Date().toISOString().split('T')[0]}.pdf`);
+    mostrarNotificacion('Reporte PDF exportado exitosamente', 'success');
 }
 
 // Importar datos desde JSON
@@ -519,24 +695,6 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-// ==================== ESTADÍSTICAS (Opcional) ====================
-
-function obtenerEstadisticas() {
-    return {
-        total: incidenciasActuales.length,
-        pendientes: incidenciasActuales.filter(i => i.estado === 'pendiente').length,
-        enProgreso: incidenciasActuales.filter(i => i.estado === 'en-progreso').length,
-        completadas: incidenciasActuales.filter(i => i.estado === 'completada').length,
-        urgentes: incidenciasActuales.filter(i => i.prioridad === 'urgente').length
-    };
-}
-
-// Mostrar estadísticas en consola
-function mostrarEstadisticas() {
-    const stats = obtenerEstadisticas();
-    console.log('📊 Estadísticas de Incidencias:', stats);
-}
 
 // ==================== ATAJOS DE TECLADO ====================
 document.addEventListener('keydown', (e) => {
