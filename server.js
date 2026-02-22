@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 3000;
-const HOST = '35.225.44.46'; // Escuchar en todas las interfaces de red
+const HOST = '0.0.0.0'; // Escuchar en todas las interfaces de red
 
 const MIME_TYPES = {
   '.html': 'text/html',
