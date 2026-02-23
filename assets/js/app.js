@@ -546,6 +546,8 @@ function renderizarEstadisticas() {
 
 // ==================== BUSCADOR DINÁMICO (NUEVO) ====================
 
+let lastSearchResults = [];
+
 function initDynamicSearch() {
     const searchInput = document.getElementById('dynamicSearch');
     const suggestionsContainer = document.getElementById('suggestions');
@@ -567,6 +569,7 @@ function initDynamicSearch() {
             fetch(`/api/incidencias/search?q=${encodeURIComponent(query)}`)
                 .then(res => res.json())
                 .then(data => {
+                    lastSearchResults = data;
                     renderSuggestions(data, query);
                 })
                 .catch(err => console.error('Error en búsqueda:', err));
@@ -585,13 +588,13 @@ function renderSuggestions(results, query) {
     if (results.length === 0) {
         suggestionsContainer.innerHTML = '<div class="suggestion-item">No se encontraron resultados</div>';
     } else {
-        suggestionsContainer.innerHTML = results.map(item => {
+        suggestionsContainer.innerHTML = results.map((item, index) => {
             const titleText = item.titulo || item.descripcion || '';
             const title = highlightMatch(titleText, query);
             const codeText = item.codigo || '';
             const code = codeText ? `<span class="code">${highlightMatch(codeText, query)}</span>` : '';
             return `
-                <div class="suggestion-item" onclick="selectSuggestion('${item.id}')">
+                <div class="suggestion-item" onclick="selectSuggestion(${index})">
                     ${code}
                     <div>${title}</div>
                 </div>
@@ -607,11 +610,41 @@ function highlightMatch(text, query) {
     return text.replace(regex, '<span class="match">$1</span>');
 }
 
-function selectSuggestion(id) {
-    console.log('Seleccionado ID:', id);
-    abrirModalVista(parseInt(id));
+function selectSuggestion(index) {
+    const item = lastSearchResults[index];
+    if (!item) return;
+
+    console.log('Seleccionado:', item);
+
+    // Rellenar campos
+    const descText = document.getElementById('descText');
+    const techDetails = document.getElementById('techDetails');
+    const photoSection = document.getElementById('photoSection');
+
+    if (descText) descText.textContent = item.titulo || 'Sin título';
+    if (techDetails) techDetails.textContent = item.descripcion || 'Sin descripción adicional';
+
+    // Mostrar foto
+    if (photoSection) {
+        if (item.foto) {
+            photoSection.innerHTML = `<img src="${item.foto}" alt="${item.titulo}" style="width: 100%; height: 100%; object-fit: contain;">`;
+        } else {
+            photoSection.innerHTML = `
+                <div class="photo-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <p>Sin Foto</p>
+                    <p style="font-size: 0.8rem; margin-top: 0.5rem;">Esta incidencia no tiene imagen asociada</p>
+                </div>
+            `;
+        }
+    }
+
     document.getElementById('suggestions').style.display = 'none';
-    document.getElementById('dynamicSearch').value = '';
+    document.getElementById('dynamicSearch').value = item.codigo || item.titulo || '';
 }
 
 // ==================== EXPORTAR PDF (SIMPLIFICADO) ====================
