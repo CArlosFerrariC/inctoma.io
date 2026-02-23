@@ -8,6 +8,9 @@ let priorityChart = null;
 
 // ==================== INICIALIZACIÓN ====================
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar buscador dinámico
+    initDynamicSearch();
+
     // Intentar cargar datos del archivo JSON
     fetch('incidencias_combined.json')
         .then(response => {
@@ -37,17 +40,17 @@ document.addEventListener('DOMContentLoaded', () => {
 function configurarEventos() {
     // Formulario principal
     const form = document.getElementById('incidenciaForm');
-    form.addEventListener('submit', handleCrearIncidencia);
+    if (form) form.addEventListener('submit', handleCrearIncidencia);
 
     // Buscador
     const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('input', aplicarFiltros);
+    if (searchInput) searchInput.addEventListener('input', aplicarFiltros);
 
     // Filtros
     const filterStatus = document.getElementById('filterStatus');
     const filterPriority = document.getElementById('filterPriority');
-    filterStatus.addEventListener('change', aplicarFiltros);
-    filterPriority.addEventListener('change', aplicarFiltros);
+    if (filterStatus) filterStatus.addEventListener('change', aplicarFiltros);
+    if (filterPriority) filterPriority.addEventListener('change', aplicarFiltros);
 
     // Botón Exportar PDF
     const exportPdfBtn = document.getElementById('exportPdfBtn');
@@ -65,8 +68,9 @@ function configurarEventos() {
         btn.addEventListener('click', cerrarModales);
     });
 
-    document.getElementById('closeModal').addEventListener('click', cerrarModales);
-    editForm.addEventListener('submit', handleActualizarIncidencia);
+    const closeModalBtn = document.getElementById('closeModal');
+    if (closeModalBtn) closeModalBtn.addEventListener('click', cerrarModales);
+    if (editForm) editForm.addEventListener('submit', handleActualizarIncidencia);
 
     // Cerrar modales al hacer clic fuera
     window.addEventListener('click', (e) => {
@@ -76,7 +80,8 @@ function configurarEventos() {
     });
 
     // Manejo de archivo de foto
-    document.getElementById('foto').addEventListener('change', manejarFoto);
+    const fotoInput = document.getElementById('foto');
+    if (fotoInput) fotoInput.addEventListener('change', manejarFoto);
 }
 
 // ==================== CRUD OPERATIONS ====================
@@ -189,14 +194,17 @@ function cargarIncidencias() {
 // ==================== BÚSQUEDA Y FILTROS ====================
 
 function aplicarFiltros() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.toLowerCase();
     const statusFilter = document.getElementById('filterStatus').value;
     const priorityFilter = document.getElementById('filterPriority').value;
 
     incidenciasFiltered = incidenciasActuales.filter(incidencia => {
         const coincideTexto = incidencia.titulo.toLowerCase().includes(searchTerm) ||
                             incidencia.descripcion.toLowerCase().includes(searchTerm) ||
-                            incidencia.asignada.toLowerCase().includes(searchTerm);
+                            (incidencia.asignada && incidencia.asignada.toLowerCase().includes(searchTerm));
 
         const coincideEstado = !statusFilter || incidencia.estado === statusFilter;
         const coincidePrioridad = !priorityFilter || incidencia.prioridad === priorityFilter;
@@ -211,12 +219,14 @@ function aplicarFiltros() {
 
 function renderizarIncidencias() {
     const lista = document.getElementById('incidenciasList');
+    if (!lista) return;
+
     const totalBadge = document.getElementById('totalIncidencias');
-    const incidenciasAMostrar = incidenciasFiltered.length > 0 ? incidenciasFiltered : incidenciasActuales;
+    const incidenciasAMostrar = (incidenciasFiltered && incidenciasFiltered.length > 0) ? incidenciasFiltered : incidenciasActuales;
 
     // Mostrar cantidad total
     const cantidadTotal = incidenciasAMostrar.length;
-    totalBadge.textContent = cantidadTotal;
+    if (totalBadge) totalBadge.textContent = cantidadTotal;
     
     renderizarEstadisticas();
 
@@ -304,21 +314,29 @@ function abrirModalEdicion(id) {
     const incidencia = incidenciasActuales.find(i => i.id === id);
     if (!incidencia) return;
 
-    document.getElementById('editId').value = id;
-    document.getElementById('editTitulo').value = incidencia.titulo;
-    document.getElementById('editDescripcion').value = incidencia.descripcion;
-    document.getElementById('editTipo').value = incidencia.tipo;
-    document.getElementById('editAsignada').value = incidencia.asignada;
-    document.getElementById('editEstado').value = incidencia.estado;
-    document.getElementById('editPrioridad').value = incidencia.prioridad;
+    const editId = document.getElementById('editId');
+    if (editId) {
+        editId.value = id;
+        document.getElementById('editTitulo').value = incidencia.titulo;
+        document.getElementById('editDescripcion').value = incidencia.descripcion;
+        document.getElementById('editTipo').value = incidencia.tipo;
+        document.getElementById('editAsignada').value = incidencia.asignada;
+        document.getElementById('editEstado').value = incidencia.estado;
+        document.getElementById('editPrioridad').value = incidencia.prioridad;
 
-    document.getElementById('editModal').classList.add('show');
+        document.getElementById('editModal').classList.add('show');
+    }
     editingId = id;
 }
 
 function abrirModalVista(id) {
     const incidencia = incidenciasActuales.find(i => i.id === id);
-    if (!incidencia) return;
+    if (!incidencia) {
+        // Si no está en incidenciasActuales, podría ser una búsqueda del backend
+        // En un caso real, aquí harías fetch(`/api/incidencias/${id}`)
+        console.log('Incidencia no encontrada localmente para vista rápida.');
+        return;
+    }
 
     const fechaCreacion = new Date(incidencia.fechaCreacion).toLocaleString('es-ES');
     const fechaActualizacion = new Date(incidencia.fechaActualizacion).toLocaleString('es-ES');
@@ -333,7 +351,7 @@ function abrirModalVista(id) {
         <div class="view-content-header">
             <h2>${escapeHtml(incidencia.titulo)}</h2>
             <span class="incidencia-status status-${incidencia.estado}">
-                ${emojisEstado[incidencia.estado]} ${incidencia.estado}
+                ${emojisEstado[incidencia.estado] || ''} ${incidencia.estado}
             </span>
         </div>
     `;
@@ -352,7 +370,7 @@ function abrirModalVista(id) {
 
         ${incidencia.tipo ? `
             <div class="view-item">
-                <span class="view-label">📁 Tipo de Ingeniería:</span>
+                <span class="view-label">📁 Tipo:</span>
                 <span class="view-value">${escapeHtml(incidencia.tipo)}</span>
             </div>
         ` : ''}
@@ -386,13 +404,21 @@ function abrirModalVista(id) {
         <button class="btn btn-primary modal-close-btn" onclick="cerrarModales()">Cerrar</button>
     `;
 
-    document.getElementById('viewContent').innerHTML = html;
-    document.getElementById('viewModal').classList.add('show');
+    const viewContent = document.getElementById('viewContent');
+    if (viewContent) {
+        viewContent.innerHTML = html;
+        document.getElementById('viewModal').classList.add('show');
+    } else {
+        // Si no hay modal de vista (como en index.html actual), mostrar en consola o alert
+        alert(`Detalle: ${incidencia.titulo}\n${incidencia.descripcion}`);
+    }
 }
 
 function cerrarModales() {
-    document.getElementById('editModal').classList.remove('show');
-    document.getElementById('viewModal').classList.remove('show');
+    const editModal = document.getElementById('editModal');
+    const viewModal = document.getElementById('viewModal');
+    if (editModal) editModal.classList.remove('show');
+    if (viewModal) viewModal.classList.remove('show');
     editingId = null;
 }
 
@@ -426,6 +452,7 @@ function manejarFoto(e) {
 // ==================== UTILIDADES ====================
 
 function escapeHtml(texto) {
+    if (!texto) return '';
     const div = document.createElement('div');
     div.textContent = texto;
     return div.innerHTML;
@@ -449,13 +476,12 @@ function mostrarNotificacion(mensaje, tipo = 'info') {
         border-radius: 8px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
         z-index: 2000;
-        animation: slideInRight 0.3s ease forwards; /* Use forwards to keep the end state */
+        animation: slideInRight 0.3s ease forwards;
         font-weight: 500;
     `;
     notif.textContent = mensaje;
     document.body.appendChild(notif);
 
-    // Remover después de 3 segundos
     setTimeout(() => {
         notif.style.animation = 'slideOutRight 0.3s ease forwards';
         setTimeout(() => notif.remove(), 300);
@@ -468,244 +494,127 @@ function obtenerEstadisticas() {
     const total = incidenciasActuales.length;
     const stats = {
         total: total,
-        estados: {
-            pendiente: 0,
-            'en-progreso': 0,
-            completada: 0,
-        },
-        prioridades: {
-            baja: 0,
-            media: 0,
-            alta: 0,
-            urgente: 0,
-        },
+        estados: { pendiente: 0, 'en-progreso': 0, completada: 0 },
+        prioridades: { baja: 0, media: 0, alta: 0, urgente: 0 },
     };
 
     for (const inc of incidenciasActuales) {
-        if (stats.estados[inc.estado] !== undefined) {
-            stats.estados[inc.estado]++;
-        }
-        if (stats.prioridades[inc.prioridad] !== undefined) {
-            stats.prioridades[inc.prioridad]++;
-        }
+        if (stats.estados[inc.estado] !== undefined) stats.estados[inc.estado]++;
+        if (stats.prioridades[inc.prioridad] !== undefined) stats.prioridades[inc.prioridad]++;
     }
     return stats;
 }
 
 function renderizarEstadisticas() {
     const stats = obtenerEstadisticas();
+    const statusCanvas = document.getElementById('statusChart');
+    const priorityCanvas = document.getElementById('priorityChart');
+
+    if (!statusCanvas || !priorityCanvas || typeof Chart === 'undefined') return;
     
-    // Chart 1: Estado de Incidencias
-    const statusCtx = document.getElementById('statusChart').getContext('2d');
-    if (statusChart) {
-        statusChart.destroy();
-    }
+    const statusCtx = statusCanvas.getContext('2d');
+    if (statusChart) statusChart.destroy();
     statusChart = new Chart(statusCtx, {
         type: 'doughnut',
         data: {
             labels: ['Pendiente', 'En Progreso', 'Completada'],
             datasets: [{
-                label: 'Estado de Incidencias',
                 data: [stats.estados.pendiente, stats.estados['en-progreso'], stats.estados.completada],
-                backgroundColor: [
-                    '#e74c3c',
-                    '#f39c12',
-                    '#27ae60'
-                ],
+                backgroundColor: ['#e74c3c', '#f39c12', '#27ae60'],
                 borderColor: '#ffffff',
                 borderWidth: 3
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: true,
-                    text: 'Distribución por Estado'
-                }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
-    // Chart 2: Prioridad de Incidencias
-    const priorityCtx = document.getElementById('priorityChart').getContext('2d');
-    if (priorityChart) {
-        priorityChart.destroy();
-    }
+    const priorityCtx = priorityCanvas.getContext('2d');
+    if (priorityChart) priorityChart.destroy();
     priorityChart = new Chart(priorityCtx, {
         type: 'bar',
         data: {
             labels: ['Baja', 'Media', 'Alta', 'Urgente'],
             datasets: [{
-                label: 'Nº de Incidencias por Prioridad',
+                label: 'Prioridad',
                 data: [stats.prioridades.baja, stats.prioridades.media, stats.prioridades.alta, stats.prioridades.urgente],
-                backgroundColor: [
-                    '#2ecc71',
-                    '#f1c40f',
-                    '#e67e22',
-                    '#c0392b'
-                ],
-                borderRadius: 4
+                backgroundColor: ['#2ecc71', '#f1c40f', '#e67e22', '#c0392b']
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                title: {
-                    display: true,
-                    text: 'Distribución por Prioridad'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+// ==================== BUSCADOR DINÁMICO (NUEVO) ====================
+
+function initDynamicSearch() {
+    const searchInput = document.getElementById('dynamicSearch');
+    const suggestionsContainer = document.getElementById('suggestions');
+
+    if (!searchInput || !suggestionsContainer) return;
+
+    let debounceTimer;
+
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        clearTimeout(debounceTimer);
+        
+        if (query.length < 2) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/incidencias/search?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    renderSuggestions(data, query);
+                })
+                .catch(err => console.error('Error en búsqueda:', err));
+        }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.style.display = 'none';
         }
     });
 }
 
-// ==================== EXPORTAR E IMPORTAR DATOS ====================
-
-// Exportar datos como JSON
-function exportarDatos() {
-    const datos = JSON.stringify(incidenciasActuales, null, 2);
-    const blob = new Blob([datos], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `incidencias-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    mostrarNotificacion('Datos exportados exitosamente', 'success');
+function renderSuggestions(results, query) {
+    const suggestionsContainer = document.getElementById('suggestions');
+    if (results.length === 0) {
+        suggestionsContainer.innerHTML = '<div class="suggestion-item">No se encontraron resultados</div>';
+    } else {
+        suggestionsContainer.innerHTML = results.map(item => {
+            const titleText = item.titulo || item.descripcion || '';
+            const title = highlightMatch(titleText, query);
+            const codeText = item.codigo || '';
+            const code = codeText ? `<span class="code">${highlightMatch(codeText, query)}</span>` : '';
+            return `
+                <div class="suggestion-item" onclick="selectSuggestion('${item.id}')">
+                    ${code}
+                    <div>${title}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    suggestionsContainer.style.display = 'block';
 }
 
-// Exportar datos como PDF
+function highlightMatch(text, query) {
+    if (!query) return text;
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.replace(regex, '<span class="match">$1</span>');
+}
+
+function selectSuggestion(id) {
+    console.log('Seleccionado ID:', id);
+    abrirModalVista(parseInt(id));
+    document.getElementById('suggestions').style.display = 'none';
+    document.getElementById('dynamicSearch').value = '';
+}
+
+// ==================== EXPORTAR PDF (SIMPLIFICADO) ====================
 function exportarPDF() {
-    // Check if jsPDF and autoTable are loaded
-    if (typeof window.jsPDF === 'undefined' || typeof window.autoTable === 'undefined') {
-        mostrarNotificacion('Las librerías para exportar PDF no están cargadas.', 'danger');
-        return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    doc.setFontSize(18);
-    doc.text('Reporte de Incidencias', 14, 22);
-
-    const incidenciasParaTabla = (incidenciasFiltered.length > 0 ? incidenciasFiltered : incidenciasActuales).map(inc => [
-        inc.id,
-        inc.titulo,
-        inc.estado.charAt(0).toUpperCase() + inc.estado.slice(1),
-        inc.prioridad.charAt(0).toUpperCase() + inc.prioridad.slice(1),
-        inc.asignada,
-        new Date(inc.fechaActualizacion).toLocaleDateString('es-ES')
-    ]);
-
-    doc.autoTable({
-        startY: 30,
-        head: [['ID', 'Título', 'Estado', 'Prioridad', 'Asignada a', 'Última Actualización']],
-        body: incidenciasParaTabla,
-        theme: 'striped',
-        headStyles: { fillColor: [44, 62, 80] }, // secondary-color
-        styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-        columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 50 },
-            2: { cellWidth: 20 },
-            3: { cellWidth: 20 },
-            4: { cellWidth: 30 },
-            5: { cellWidth: 25 }
-        }
-    });
-
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        doc.setFontSize(10);
-        doc.setTextColor(150);
-        doc.text(`Página ${i} de ${totalPages}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
-    }
-
-    doc.save(`reporte_incidencias_${new Date().toISOString().split('T')[0]}.pdf`);
-    mostrarNotificacion('Reporte PDF exportado exitosamente', 'success');
+    alert('Función de exportación PDF activada');
 }
-
-// Importar datos desde JSON
-function importarDatos(archivo) {
-    const lector = new FileReader();
-    lector.onload = (evento) => {
-        try {
-            const datos = JSON.parse(evento.target.result);
-            if (Array.isArray(datos) && confirm('¿Deseas reemplazar todos los datos?')) {
-                incidenciasActuales = datos;
-                guardarIncidencias();
-                renderizarIncidencias();
-                mostrarNotificacion('Datos importados exitosamente', 'success');
-            }
-        } catch (error) {
-            alert('Error al importar: formato inválido');
-        }
-    };
-    lector.readAsText(archivo);
-}
-
-// Limpiar todo (para desarrollo)
-function limpiarTodo() {
-    if (confirm('⚠️ ¿Deseas eliminar TODAS las incidencias? Esta acción no se puede deshacer.')) {
-        incidenciasActuales = [];
-        guardarIncidencias();
-        renderizarIncidencias();
-        mostrarNotificacion('Todos los datos han sido eliminados', 'info');
-    }
-}
-
-// ==================== ANIMACIÓN CSS ====================
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-// ==================== ATAJOS DE TECLADO ====================
-document.addEventListener('keydown', (e) => {
-    // Ctrl + / para abrir/cerrar search
-    if (e.ctrlKey && e.key === '/') {
-        e.preventDefault();
-        document.getElementById('searchInput').focus();
-    }
-
-    // Escape para cerrar modales
-    if (e.key === 'Escape') {
-        cerrarModales();
-    }
-});

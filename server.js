@@ -1,48 +1,46 @@
-const http = require('http');
+const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const app = express();
 
 const PORT = 3000;
-const HOST = '0.0.0.0'; // Escuchar en todas las interfaces de red
+const HOST = '0.0.0.0';
 
-const MIME_TYPES = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'application/javascript',
-  '.json': 'application/json',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.gif': 'image/gif'
-};
+app.use(express.json());
+app.use(express.static(path.join(__dirname)));
 
-http.createServer((req, res) => {
-  // Simplificar la URL para seguridad y manejo de rutas
-  let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
+// Cargar datos de incidencias
+let incidencias = [];
+try {
+    const data = fs.readFileSync(path.join(__dirname, 'incidencias_combined.json'), 'utf8');
+    incidencias = JSON.parse(data);
+} catch (err) {
+    console.error('Error al cargar incidencias:', err);
+}
 
-  // Evitar que se acceda a archivos fuera del directorio del proyecto
-  if (filePath.indexOf(__dirname) !== 0) {
-      res.writeHead(403, { 'Content-Type': 'text/plain' });
-      res.end('Acceso prohibido');
-      return;
-  }
-
-  fs.readFile(filePath, (err, data) => {
-    if (err) {
-      if (err.code === 'ENOENT') {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Recurso no encontrado');
-      } else {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end(`Error interno del servidor: ${err.code}`);
-      }
-    } else {
-      const ext = path.extname(filePath);
-      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(data);
+// Ruta de búsqueda dinámica (Backend)
+app.get('/api/incidencias/search', (req, res) => {
+    const query = req.query.q ? req.query.q.toLowerCase() : '';
+    
+    if (!query) {
+        return res.json([]);
     }
-  });
-}).listen(PORT, HOST, () => {
-  console.log(`Servidor corriendo en http://${HOST}:${PORT}, accesible desde tu red local.`);
-  console.log(`Para verlo en este equipo, abre: http://localhost:${PORT}`);
+
+    // Simulando una consulta LIKE en base de datos
+    const results = incidencias.filter(inc => 
+        (inc.codigo && inc.codigo.toLowerCase().includes(query)) ||
+        (inc.titulo && inc.titulo.toLowerCase().includes(query)) ||
+        (inc.descripcion && inc.descripcion.toLowerCase().includes(query))
+    );
+
+    // Limitamos a 10 resultados para el autocomplete
+    res.json(results.slice(0, 10));
+});
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.listen(PORT, HOST, () => {
+    console.log(`Servidor Express corriendo en http://localhost:${PORT}`);
 });
